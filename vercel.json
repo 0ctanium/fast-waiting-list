@@ -1,0 +1,5 @@
+{
+  "name": "fast-waiting-list",
+  "version": "1.0.1",
+  "alias": ["fast-waiting-list.vercel.app", "waiting-list"]
+}

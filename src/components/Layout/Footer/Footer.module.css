@@ -15,7 +15,17 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  flex-grow: 1;
 }
+
+.footer button {
+  border: 0;
+  background: 0;
+  outline: 0;
+  color: #000;
+}.footer button:hover {
+  color: #0070f3;
+ }
 
 .logo {
   height: 1em;

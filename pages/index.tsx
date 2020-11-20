@@ -1,47 +1,159 @@
-import React from 'react';
+import React, { useCallback, useState, ButtonHTMLAttributes } from 'react';
 import { NextPage } from 'next';
+import { SwitchTransition, CSSTransition } from 'react-transition-group';
 import Layout from '@components/Layout/Layout';
+import Button from '@components/Button/Button';
+import BackIcon from '@icons/Back';
+import CreateListForm, {
+  CreateListFormValues,
+} from '@components/Form/CreateList';
+import JoinListForm, { JoinListFormValues } from '@components/Form/Join';
+import { initializeFirebase } from '@services/firebase/client';
 
 import styles from '@styles/Home.module.css';
+import firebase from 'firebase';
+import { useRouter } from 'next/router';
+
+initializeFirebase();
 
 const HomePage: NextPage = () => {
+  const [choice, setChoice] = useState<'join' | 'create'>(null);
+  const [formLoading, setFormLoading] = useState(false);
+  // TODO: Access old owned lists
+  // const [ownedList, setOwnedList] = useState([]);
+  const router = useRouter();
+
+  const handleJoinSubmit = useCallback(
+    (values: JoinListFormValues) => {
+      router.push(`/${values.code}`).then();
+    },
+    [router]
+  );
+
+  const handleCreateSubmit = useCallback(
+    async (values: CreateListFormValues) => {
+      setFormLoading(true);
+
+      firebase
+        .functions()
+        .httpsCallable('createList')({
+          name: values.name,
+          desc: values.desc,
+        })
+        .then((key) => {
+          if (key && key.data) {
+            router.push(`/${key.data}`);
+          }
+        });
+    },
+    [router]
+  );
+
+  // TODO: Access old owned lists
+  // useEffect(() => {
+  //   if (uid) {
+  //     firebase
+  //       .database()
+  //       .ref()
+  //       .child('lists')
+  //       .orderByChild('owner')
+  //       .equalTo(uid)
+  //       .once('value')
+  //       .then((snap) => {
+  //         setOwnedList(snap.val());
+  //       });
+  //   }
+  // }, [uid]);
+
   return (
     <Layout>
       <h1 className={styles.title}>
-        Welcome to <a href="https://nextjs.org">Next.js!</a>
+        Bienvenue sur{' '}
+        <a href="https://fast-waiting-list.vercel.app">Fast Wait List</a>
       </h1>
 
       <p className={styles.description}>
-        Get started by editing{' '}
-        <code className={styles.code}>pages/index.tsx</code>
+        Commencez par créer une liste d'attente ou rejoignez-en une
       </p>
 
-      <div className={styles.grid}>
-        <a href="https://nextjs.org/docs" className={styles.card}>
-          <h3>Documentation &rarr;</h3>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a href="https://nextjs.org/learn" className={styles.card}>
-          <h3>Learn &rarr;</h3>
-          <p>Learn about Next.js in an interactive course with quizzes!</p>
-        </a>
-
-        <a
-          href="https://github.com/vercel/next.js/tree/master/examples"
-          className={styles.card}>
-          <h3>Examples &rarr;</h3>
-          <p>Discover and deploy boilerplate example Next.js projects.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/import?filter=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          className={styles.card}>
-          <h3>Deploy &rarr;</h3>
-          <p>Instantly deploy your Next.js site to a public URL with Vercel.</p>
-        </a>
+      <div className={styles.card}>
+        <SwitchTransition mode="out-in">
+          <CSSTransition
+            key={choice}
+            // @ts-ignore
+            addEndListener={(node: any, done: () => void) => {
+              node.addEventListener('transitionend', done, false);
+            }}
+            classNames={{
+              enter: !choice ? styles.fadeEnterLeft : styles.fadeEnterRight,
+              enterActive: styles.fadeEnterActive,
+              exit: styles.fadeExit,
+              exitActive: !choice
+                ? styles.fadeExitActiveRight
+                : styles.fadeExitActiveLeft,
+            }}>
+            {choice ? (
+              choice === 'join' ? (
+                <div className={styles.cardContainer}>
+                  <div className={styles.cardHeader}>
+                    <h3>Rejoindre une liste</h3>
+                    <BackButton onClick={() => setChoice(null)} />
+                  </div>
+                  <div className={styles.cardContent}>
+                    <JoinListForm onSubmit={handleJoinSubmit} />
+                    {/* TODO: Access old owned lists */}
+                    {/*<div className={styles.ownedLists}>*/}
+                    {/*  {Object.entries(ownedList).map(([key, list]) => (*/}
+                    {/*    <Link href={`/${key}`}>{list.name}</Link>*/}
+                    {/*  ))}*/}
+                    {/*</div>*/}
+                  </div>
+                </div>
+              ) : choice === 'create' ? (
+                <div className={styles.cardContainer}>
+                  <div className={styles.cardHeader}>
+                    <h3>Créer une liste</h3>
+                    <BackButton onClick={() => setChoice(null)} />
+                  </div>
+                  <div className={styles.cardContent}>
+                    <CreateListForm
+                      onSubmit={handleCreateSubmit}
+                      loading={formLoading}
+                    />
+                  </div>
+                </div>
+              ) : null
+            ) : (
+              <div className={styles.cardContainer}>
+                <div className={styles.cardHeader}>
+                  <h3>De quelle humeur êtes-vous ?</h3>
+                </div>
+                <div className={styles.cardContent}>
+                  <Button fullWidth onClick={() => setChoice('create')}>
+                    Créer une liste
+                  </Button>
+                  <div className={styles.divider} />
+                  <Button fullWidth onClick={() => setChoice('join')}>
+                    Rejoindre une liste
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CSSTransition>
+        </SwitchTransition>
       </div>
     </Layout>
+  );
+};
+
+const BackButton: React.FC<ButtonHTMLAttributes<HTMLButtonElement>> = ({
+  children,
+  ...props
+}) => {
+  return (
+    <button {...props} className={styles.backButton}>
+      <BackIcon />
+    </button>
   );
 };
 

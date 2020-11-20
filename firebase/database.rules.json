@@ -1,0 +1,15 @@
+{
+  "rules": {
+    "lists": {
+      ".read": true,
+      "$list_id": {
+        ".write": "data.child('owner').val() === auth.uid",
+        "data": {
+          "$uid": {   
+            ".write": "auth != null && auth.uid == $uid"            
+          },
+        },
+      }
+    }
+  }
+}

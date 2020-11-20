@@ -97,8 +97,10 @@ const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
     if (current && prevCurrent) {
       if (current.checked !== prevCurrent.checked) {
         if (current.checked) {
-          audio.src = '/static/audio/notification.mp3';
-          audio.play();
+          const notification = audio || new Audio();
+
+          notification.src = '/static/audio/notification.mp3';
+          notification.play();
         }
       }
     }
@@ -433,8 +435,6 @@ const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
                     {...provided.droppableProps}
                     ref={provided.innerRef}
                     style={{
-                      borderRadius: 12,
-                      boxShadow: '0 0 6px 3px rgba(0, 0, 0, 0.3)',
                       background: snapshot.isDraggingOver
                         ? 'lightblue'
                         : '#eaeaea',

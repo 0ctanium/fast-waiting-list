@@ -116,3 +116,29 @@ html[theme='dark'] .card {
 .fadeExitActiveLeft, .fadeExitActiveRight {
   transition: opacity 500ms, transform 500ms;
 }
+
+.ownedLists {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+.ownedLists::after {
+  content: "";
+  position: absolute;
+  display: block;
+  width: 200px;
+  height: 1px;
+  background: rgba(0,0,0,.3);
+  bottom: 0;
+}
+
+.ownedLists a {
+  color: #0070f3;
+}
+.ownedLists a:hover {
+  text-decoration: underline;
+}

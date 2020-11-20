@@ -1,4 +1,9 @@
-import React, { useCallback, useState, ButtonHTMLAttributes } from 'react';
+import React, {
+  useCallback,
+  useState,
+  ButtonHTMLAttributes,
+  useEffect,
+} from 'react';
 import { NextPage } from 'next';
 import { SwitchTransition, CSSTransition } from 'react-transition-group';
 import Layout from '@components/Layout/Layout';
@@ -13,14 +18,16 @@ import { initializeFirebase } from '@services/firebase/client';
 import styles from '@styles/Home.module.css';
 import firebase from 'firebase';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
+import { useAuth } from '@hooks/useAuth';
 
 initializeFirebase();
 
 const HomePage: NextPage = () => {
+  const { uid } = useAuth();
   const [choice, setChoice] = useState<'join' | 'create'>(null);
   const [formLoading, setFormLoading] = useState(false);
-  // TODO: Access old owned lists
-  // const [ownedList, setOwnedList] = useState([]);
+  const [ownedList, setOwnedList] = useState([]);
   const router = useRouter();
 
   const handleJoinSubmit = useCallback(
@@ -49,21 +56,20 @@ const HomePage: NextPage = () => {
     [router]
   );
 
-  // TODO: Access old owned lists
-  // useEffect(() => {
-  //   if (uid) {
-  //     firebase
-  //       .database()
-  //       .ref()
-  //       .child('lists')
-  //       .orderByChild('owner')
-  //       .equalTo(uid)
-  //       .once('value')
-  //       .then((snap) => {
-  //         setOwnedList(snap.val());
-  //       });
-  //   }
-  // }, [uid]);
+  useEffect(() => {
+    if (uid) {
+      firebase
+        .database()
+        .ref()
+        .child('lists')
+        .orderByChild('owner')
+        .equalTo(uid)
+        .once('value')
+        .then((snap) => {
+          setOwnedList(snap.val());
+        });
+    }
+  }, [uid]);
 
   return (
     <Layout>
@@ -100,13 +106,15 @@ const HomePage: NextPage = () => {
                     <BackButton onClick={() => setChoice(null)} />
                   </div>
                   <div className={styles.cardContent}>
+                    {ownedList && (
+                      <div className={styles.ownedLists}>
+                        <h4>Reprendre mes listes</h4>
+                        {Object.entries(ownedList).map(([key, list]) => (
+                          <Link href={`/${key}`}>{list.name}</Link>
+                        ))}
+                      </div>
+                    )}
                     <JoinListForm onSubmit={handleJoinSubmit} />
-                    {/* TODO: Access old owned lists */}
-                    {/*<div className={styles.ownedLists}>*/}
-                    {/*  {Object.entries(ownedList).map(([key, list]) => (*/}
-                    {/*    <Link href={`/${key}`}>{list.name}</Link>*/}
-                    {/*  ))}*/}
-                    {/*</div>*/}
                   </div>
                 </div>
               ) : choice === 'create' ? (

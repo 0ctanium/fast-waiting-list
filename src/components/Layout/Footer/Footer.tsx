@@ -5,10 +5,19 @@ const Footer: React.FC = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>(null);
 
   useEffect(() => {
-    const theme = localStorage.getItem('theme');
-    if (theme) {
-      setTheme(theme as 'light' | 'dark');
+    let theme = localStorage.getItem('theme');
+
+    if (!theme) {
+      theme =
+        window.matchMedia &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light';
+
+      localStorage.setItem('theme', theme);
     }
+
+    setTheme(theme as 'light' | 'dark');
 
     function handleThemeChange(event?: StorageEvent) {
       let newTheme: string;

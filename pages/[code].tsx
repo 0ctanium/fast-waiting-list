@@ -261,6 +261,36 @@ const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
     const dataRef = listRef.child('data');
     const stateRef = listRef.child('dataState');
 
+    listRef.once('value').then((snapshot) => {
+      if (snapshot.exists()) {
+        const val = snapshot.val();
+
+        if (val.data) {
+          setDataMap(
+            Object.entries(val.data).reduce(
+              (acc, [key, val]) => ({
+                ...acc,
+                [key]: val,
+              }),
+              {}
+            )
+          );
+        }
+
+        if (val.dataState) {
+          setDataState(
+            Object.entries(val.dataState).reduce(
+              (acc, [key, val]) => ({
+                ...acc,
+                [key]: val,
+              }),
+              {}
+            )
+          );
+        }
+      }
+    });
+
     // TODO: User blacklist
     // listRef
     //   .child('blacklist')
@@ -291,20 +321,6 @@ const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
       });
     });
 
-    dataRef.once('value').then((snapshot) => {
-      if (snapshot.exists()) {
-        setDataMap(
-          Object.entries(snapshot.val()).reduce(
-            (acc, [key, val]) => ({
-              ...acc,
-              [key]: val,
-            }),
-            {}
-          )
-        );
-      }
-    });
-
     stateRef.on('child_added', (snapshot) => {
       setDataState((prevState) => ({
         ...prevState,
@@ -325,20 +341,6 @@ const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
 
         return prevState;
       });
-    });
-
-    stateRef.once('value').then((snapshot) => {
-      if (snapshot.exists()) {
-        setDataState(
-          Object.entries(snapshot.val()).reduce(
-            (acc, [key, val]) => ({
-              ...acc,
-              [key]: val,
-            }),
-            {}
-          )
-        );
-      }
     });
 
     return function cleanup() {

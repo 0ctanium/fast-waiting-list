@@ -5,12 +5,14 @@
  1. [X] UI Improvements
     - [X] Notifications
     - [X] Tooltips
+    - [X] Loading screen
+    - [ ] Responsive
  2. [ ] Invitation system
     - [ ] Public/Private lists
     - [ ] Invite code generation
     - [ ] UID Whitelist
  4. [ ] Code improvement
-    - [ ] Split page in more components
+    - [ ] Split page into more components
  3. [ ] Moderation system
     - [ ] Blacklist
     - [ ] Ban management

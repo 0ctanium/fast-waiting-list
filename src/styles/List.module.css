@@ -27,6 +27,15 @@
   transform: translate(125%, -50%);
 }
 
+@media (max-width: 600px) {
+  .invite {
+    position: absolute;
+    top: 120%;
+    right: 0;
+    transform: none;
+  }
+}
+
 .invite button {
   width: 32px;
   height: 32px;

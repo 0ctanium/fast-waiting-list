@@ -1,0 +1,45 @@
+.portal {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99;
+  padding-bottom: 16px;
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.snackbar {
+  background: #151515;
+  padding: 6px 12px;
+  margin-top: 16px;
+  color: #eaeaea;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.snackbar p {
+  padding: 0;
+  margin: 0;
+  flex-grow: 1;
+}
+
+.snackbar .close {
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: 0;
+  outline: none;
+  color: #eaeaea;
+  transition: color 200ms;
+  padding: 8px;
+  margin-right: -8px;
+  margin-left: 4px;
+}
+
+.snackbar .close:hover{
+  color: rgba(234, 234, 234, 0.7);
+}

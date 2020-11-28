@@ -29,11 +29,12 @@
   background: #eaeaea;
   border-radius: 12px;
   box-shadow: 0 0 6px 3px rgba(0, 0, 0, 0.3);
+  transition: box-shadow 300ms;
   overflow: hidden;
 }
 
 html[theme='dark'] .card {
-  box-shadow: none;
+  box-shadow: 0 0 6px 3px rgb(225, 225, 225);
 }
 
 .card .cardContainer {

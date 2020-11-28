@@ -12,6 +12,12 @@ html[theme='dark'] {
   filter: invert(1) hue-rotate(180deg);
 }
 
+html[theme='dark'] img,
+html[theme='dark'] video,
+html[theme='dark'] .bypass-theme {
+  filter: invert(1) hue-rotate(180deg);
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -19,4 +25,9 @@ a {
 
 * {
   box-sizing: border-box;
+}
+
+button svg {
+  width: 100%;
+  height: 100%;
 }

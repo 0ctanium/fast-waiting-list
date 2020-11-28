@@ -14,7 +14,6 @@ import React, {
 } from 'react';
 import { initializeFirebase } from '@services/firebase/client';
 import firebase from 'firebase';
-import { AppError } from '@errors/AppError';
 
 import styles from '@styles/List.module.css';
 import Input from '@components/Form/Input/Input';
@@ -29,6 +28,7 @@ import {
 import Tooltip from '@components/Tooltip/Tooltip';
 import LoadingSpinner from '@icons/Loading';
 import copy from 'copy-to-clipboard';
+import { useNotifications } from '@hooks/useNotifications';
 initializeFirebase();
 
 type Waiter = {
@@ -47,6 +47,7 @@ const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
   const [dataMap, setDataMap] = useState(null);
   const [dataState, setDataState] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+  const { notify } = useNotifications();
 
   const data = useMemo<Waiter[]>(
     () =>
@@ -358,6 +359,7 @@ const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
           <Tooltip text={'Inviter des personnes'}>
             <button
               onClick={() => {
+                notify({ text: 'Le code de la liste a été copié !' });
                 copy(props.list.id);
               }}>
               <MdPersonAdd />
@@ -569,7 +571,11 @@ export const getStaticProps: GetStaticProps<ListPageProps> = async (
     .child(listID)
     .once('value');
 
-  if (!snap.exists()) throw new AppError(404, `La liste n'existe pas`);
+  if (!snap.exists()) {
+    return {
+      notFound: true,
+    };
+  }
 
   const { owner, name, desc } = snap.val() as List;
 

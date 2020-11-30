@@ -15,21 +15,34 @@ import React, {
 import { initializeFirebase } from '@services/firebase/client';
 import firebase from 'firebase';
 
-import styles from '@styles/List.module.css';
-import Input from '@components/Form/Input/Input';
 import { useAuth } from '@hooks/useAuth';
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 import {
-  MdClose,
-  MdExitToApp,
-  MdDragHandle,
-  MdPersonAdd,
-} from 'react-icons/md';
-import Tooltip from '@components/Tooltip/Tooltip';
+  Close as CloseIcon,
+  ExitToApp as ExitToAppIcon,
+  DragHandle as DragHandleIcon,
+  PersonAdd as PersonAddIcon,
+} from '@material-ui/icons';
 import LoadingSpinner from '@icons/Loading';
 import copy from 'copy-to-clipboard';
-import { useNotifications } from '@hooks/useNotifications';
 import Head from 'next/head';
+import {
+  Button,
+  Divider,
+  IconButton,
+  List,
+  ListItem,
+  ListItemIcon,
+  makeStyles,
+  TextField,
+  Tooltip,
+  Typography,
+  Checkbox,
+  ListItemText,
+  Card,
+  ListItemSecondaryAction,
+} from '@material-ui/core';
+import { useSnackbar } from 'notistack';
 initializeFirebase();
 
 type Waiter = {
@@ -40,15 +53,66 @@ type Waiter = {
   uid: string;
 };
 
+const useStyles = makeStyles({
+  title: {
+    position: 'relative',
+    textAlign: 'center',
+  },
+  desc: {
+    margin: '1.5rem',
+    fontWeight: 400,
+  },
+  invite: {
+    position: 'absolute',
+    top: '50%',
+    right: 0,
+    transform: 'translate(100%, -50%)',
+  },
+  form: {
+    display: 'flex',
+    marginBottom: '1rem',
+  },
+  input: {
+    flexGrow: 1,
+    marginRight: 12,
+  },
+  submit: {
+    fontSize: '1rem',
+    minWidth: 0,
+  },
+  infos: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  card: {
+    marginTop: '1.5rem',
+    width: 450,
+  },
+  list: {
+    transition: 'background-color 120ms',
+  },
+  drag: {
+    marginRight: 12,
+    cursor: 'grab',
+  },
+  check: {
+    padding: 0,
+    marginRight: 12,
+  },
+});
+
 const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
   props
 ) => {
+  const styles = useStyles();
   const { uid } = useAuth();
+  const { enqueueSnackbar } = useSnackbar();
   const [name, setName] = useState('');
   const [formLoading, setFormLoading] = useState(false);
   const [isLoading, setLoading] = useState(true);
   const [data, setData] = useState<Waiter[]>(null);
-  const { notify } = useNotifications();
 
   const current = useMemo(
     () => data && data.find((item) => item && item.uid === uid),
@@ -261,6 +325,8 @@ const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
               return acc;
             }, [])
           );
+        } else {
+          setData([]);
         }
       }
     });
@@ -279,22 +345,27 @@ const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
       <Head>
         <title>{props.list.name} - Fast Wait list</title>
       </Head>
+
       <div className={styles.title}>
-        <h1>{props.list.name}</h1>
-        <div className={styles.invite}>
-          <Tooltip text={'Inviter des personnes'}>
-            <button
-              onClick={() => {
-                notify({ text: 'Le code de la liste a été copié !' });
-                copy(process.env.NEXT_PUBLIC_HOSTNAME + props.list.id);
-              }}>
-              <MdPersonAdd />
-            </button>
-          </Tooltip>
-        </div>
+        <Typography variant={'h1'}>{props.list.name}</Typography>
+        {props.list.owner === uid && (
+          <div className={styles.invite}>
+            <Tooltip title={'Inviter des personnes'}>
+              <IconButton
+                onClick={() => {
+                  enqueueSnackbar(`Le lien d'accès la liste a été copié !`);
+                  copy(process.env.NEXT_PUBLIC_HOSTNAME + props.list.id);
+                }}>
+                <PersonAddIcon />
+              </IconButton>
+            </Tooltip>
+          </div>
+        )}
       </div>
 
-      <p className={styles.description}>{props.list.desc}</p>
+      <Typography variant={'h3'} className={styles.desc}>
+        {props.list.desc}
+      </Typography>
 
       {isLoading ? (
         <div>
@@ -302,82 +373,84 @@ const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
         </div>
       ) : (
         <React.Fragment>
-          {!current && props.list.owner !== uid ? (
-            <form className={styles.joinForm}>
-              <Input
+          {props.list.owner === uid ? (
+            <div className={styles.infos}>
+              {data &&
+                data.length > 0 &&
+                (uncheckedPeople.length > 0 ? (
+                  <React.Fragment>
+                    <Tooltip title={'Passer à la personne suivant'}>
+                      <Button variant={'outlined'} onClick={handleNext}>
+                        Au suivant !
+                      </Button>
+                    </Tooltip>
+                    <Divider
+                      orientation={'vertical'}
+                      flexItem
+                      style={{ margin: '0 1rem' }}
+                    />
+                    <Typography variant={'h4'}>
+                      Personne suivante: {uncheckedPeople[0].name}{' '}
+                    </Typography>
+                  </React.Fragment>
+                ) : (
+                  <Typography variant={'h4'}>
+                    Bravo, la liste est terminée !
+                  </Typography>
+                ))}
+            </div>
+          ) : !current ? (
+            <form className={styles.form}>
+              <TextField
                 label={'Votre nom'}
                 name={'name'}
                 id={'name'}
                 type={'text'}
                 value={name}
                 onChange={handleChange}
-                color={'#fff'}
-                className={styles.joinInput}
+                className={styles.input}
+                variant={'outlined'}
                 required
               />
-              <button onClick={handleJoinWaiters} className={styles.button}>
+              <Button
+                onClick={handleJoinWaiters}
+                variant={'outlined'}
+                className={styles.submit}>
                 {formLoading ? (
                   <LoadingSpinner />
                 ) : (
                   "Rejoindre la liste d'attente"
                 )}
-              </button>
+              </Button>
             </form>
           ) : (
-            current && (
-              <h4>
-                {current.checked
-                  ? 'Tu as réussi à passer, Bravo !'
-                  : beforePeople === 0
-                  ? `Tu y es presque, tu es le prochain sur la liste !`
-                  : `Attend encore un peu, il reste ${beforePeople} personne${
-                      beforePeople > 1 ? 's' : ''
-                    } devant toi !`}
-              </h4>
-            )
-          )}
-
-          {props.list.owner === uid && (
-            <div className={styles.info}>
-              {data &&
-                data.length > 0 &&
-                (uncheckedPeople.length > 0 ? (
-                  <>
-                    <div className={styles.actions}>
-                      <Tooltip text={'Passer à la personne suivant'}>
-                        <button className={styles.button} onClick={handleNext}>
-                          Au suivant !
-                        </button>
-                      </Tooltip>
-                    </div>
-                    <div className={styles.stats}>
-                      <h4>Personne suivante: {uncheckedPeople[0].name} </h4>
-                    </div>
-                  </>
-                ) : (
-                  <h3>Bravo, tu as terminé la liste !</h3>
-                ))}
-            </div>
+            <Typography variant={'h5'} style={{ fontWeight: 600 }}>
+              {current.checked
+                ? 'Tu as réussi à passer, Bravo !'
+                : beforePeople === 0
+                ? `Tu y es presque, tu es le prochain sur la liste !`
+                : `Attend encore un peu, il reste ${beforePeople} personne${
+                    beforePeople > 1 ? 's' : ''
+                  } devant toi !`}
+            </Typography>
           )}
 
           {!data || data.length === 0 ? (
-            <h3>Il n'y a personne pour le moment..</h3>
-          ) : null}
-
-          <div>
-            {data &&
-              (props.list.owner === uid ? (
+            <Typography variant={'h3'}>
+              Il n'y a personne pour le moment..
+            </Typography>
+          ) : (
+            <Card className={styles.card}>
+              {props.list.owner === uid ? (
                 <DragDropContext onDragEnd={onDragEnd}>
                   <Droppable droppableId="droppable">
                     {(provided, snapshot) => (
-                      <div
+                      <List
                         className={styles.list}
                         {...provided.droppableProps}
                         ref={provided.innerRef}
                         style={{
-                          background: snapshot.isDraggingOver
-                            ? 'lightblue'
-                            : '#eaeaea',
+                          background: snapshot.isDraggingOver && 'lightblue',
                         }}>
                         {Object.entries(data).map(
                           ([key, waiter]) =>
@@ -391,7 +464,6 @@ const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
                                   <div
                                     ref={provided.innerRef}
                                     key={key}
-                                    className={styles.listItem}
                                     style={{
                                       ...provided.draggableProps.style,
                                       background: snapshot.isDragging
@@ -400,92 +472,96 @@ const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
                                     }}
                                     {...provided.draggableProps}
                                     {...provided.dragHandleProps}>
-                                    <span
-                                      style={{
-                                        marginRight: 12,
-                                        cursor: 'grab',
-                                      }}>
-                                      <MdDragHandle />
-                                    </span>
-                                    <input
-                                      className={styles.listItemCheck}
-                                      type={'checkbox'}
-                                      name={'checked'}
-                                      value={''}
-                                      checked={waiter.checked}
-                                      onChange={handleCheckWaiter(waiter.uid)}
-                                    />
-                                    <span
-                                      className={styles.listItemTitle}
-                                      style={{
-                                        textDecoration:
-                                          waiter.checked && 'line-through',
-                                      }}>
-                                      {waiter.name}
-                                    </span>
-                                    <div className={styles.listItemActions}>
-                                      {waiter.uid === uid && (
-                                        <Tooltip
-                                          text={"Quitter la liste d'attente"}>
-                                          <button onClick={handleLeaveWaiter()}>
-                                            <MdExitToApp />
-                                          </button>
-                                        </Tooltip>
-                                      )}
-
-                                      <Tooltip text={'Retirer de la liste'}>
-                                        <button
-                                          onClick={handleLeaveWaiter(
+                                    <ListItem>
+                                      <ListItemIcon>
+                                        <DragHandleIcon
+                                          className={styles.drag}
+                                        />
+                                        <Checkbox
+                                          className={styles.check}
+                                          name={'checked'}
+                                          value={''}
+                                          checked={!!waiter.checked}
+                                          onChange={handleCheckWaiter(
                                             waiter.uid
-                                          )}>
-                                          <MdClose />
-                                        </button>
-                                      </Tooltip>
+                                          )}
+                                          color={'primary'}
+                                        />
+                                      </ListItemIcon>
+                                      <ListItemText
+                                        primary={waiter.name}
+                                        style={{
+                                          textDecoration:
+                                            !!waiter.checked && 'line-through',
+                                        }}
+                                      />
+                                      <ListItemSecondaryAction>
+                                        {waiter.uid === uid && (
+                                          <Tooltip
+                                            title={
+                                              "Quitter la liste d'attente"
+                                            }>
+                                            <IconButton
+                                              onClick={handleLeaveWaiter()}>
+                                              <ExitToAppIcon />
+                                            </IconButton>
+                                          </Tooltip>
+                                        )}
 
-                                      {/* TODO: Ban management /*/}
-                                      {/*<button onClick={handleBanWaiter(key)}>*/}
-                                      {/*  <MdBlock />*/}
-                                      {/*</button>*/}
-                                    </div>
+                                        <Tooltip title={'Retirer de la liste'}>
+                                          <IconButton
+                                            onClick={handleLeaveWaiter(
+                                              waiter.uid
+                                            )}>
+                                            <CloseIcon />
+                                          </IconButton>
+                                        </Tooltip>
+
+                                        {/* TODO: Ban management /*/}
+                                        {/*<button onClick={handleBanWaiter(key)}>*/}
+                                        {/*  <MdBlock />*/}
+                                        {/*</button>*/}
+                                      </ListItemSecondaryAction>
+                                    </ListItem>
                                   </div>
                                 )}
                               </Draggable>
                             )
                         )}
                         {provided.placeholder}
-                      </div>
+                      </List>
                     )}
                   </Droppable>
                 </DragDropContext>
               ) : (
-                <div className={styles.list}>
+                <List className={styles.list}>
                   {Object.entries(data).map(
                     ([key, waiter]) =>
                       waiter.name &&
                       typeof waiter.index === 'number' && (
-                        <div key={key} className={styles.listItem}>
-                          <span
-                            className={styles.listItemTitle}
+                        <ListItem key={key}>
+                          <ListItemText
                             style={{
                               textDecoration: waiter.checked && 'line-through',
                             }}>
                             {waiter.name}
-                          </span>
-                          <div className={styles.listItemActions}>
+                          </ListItemText>
+                          <ListItemSecondaryAction>
                             {waiter.uid === uid && (
-                              <Tooltip text={"Quitter la liste d'attente"}>
-                                <button onClick={handleLeaveWaiter()}>
-                                  <MdExitToApp />
-                                </button>
+                              <Tooltip title={"Quitter la liste d'attente"}>
+                                <IconButton onClick={handleLeaveWaiter()}>
+                                  <ExitToAppIcon />
+                                </IconButton>
                               </Tooltip>
                             )}
-                          </div>
-                        </div>
+                          </ListItemSecondaryAction>
+                        </ListItem>
                       )
                   )}
-                </div>
-              ))}
-          </div>
+                </List>
+              )}
+            </Card>
+          )}
         </React.Fragment>
       )}
     </Layout>
@@ -493,10 +569,10 @@ const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
 };
 
 export type ListPageProps = {
-  list: List;
+  list: ListProps;
 };
 
-export type List = {
+export type ListProps = {
   id: string;
   name: string;
   desc: string;
@@ -507,6 +583,12 @@ export const getStaticProps: GetStaticProps<ListPageProps> = async (
   context
 ) => {
   const listID = context.params.code as string;
+
+  if (!/^[a-zA-Z0-9]{5,7}$/.test(listID)) {
+    return {
+      notFound: true,
+    };
+  }
 
   const snap = await firebase
     .database()
@@ -520,7 +602,7 @@ export const getStaticProps: GetStaticProps<ListPageProps> = async (
     };
   }
 
-  const { owner, name, desc } = snap.val() as List;
+  const { owner, name, desc } = snap.val() as ListProps;
 
   return {
     props: {

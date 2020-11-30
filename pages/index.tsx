@@ -1,30 +1,103 @@
-import React, {
-  useCallback,
-  useState,
-  ButtonHTMLAttributes,
-  useEffect,
-} from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { NextPage } from 'next';
 import { SwitchTransition, CSSTransition } from 'react-transition-group';
 import Layout from '@components/Layout/Layout';
-import Button from '@components/Button/Button';
-import BackIcon from '@icons/Back';
 import CreateListForm, {
   CreateListFormValues,
 } from '@components/Form/CreateList';
 import JoinListForm, { JoinListFormValues } from '@components/Form/Join';
 import { initializeFirebase } from '@services/firebase/client';
+import { ArrowBack as ArrowBackIcon } from '@material-ui/icons';
 
-import styles from '@styles/Home.module.css';
 import firebase from 'firebase';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
 import { useAuth } from '@hooks/useAuth';
+import {
+  Typography,
+  Link as MUILink,
+  IconButton,
+  Card,
+  CardContent,
+  Button,
+  CardHeader,
+  makeStyles,
+  Divider,
+} from '@material-ui/core';
+import Link from '@components/Link';
 
 initializeFirebase();
 
+const useStyles = makeStyles({
+  card: {
+    display: 'flex',
+    flexDirection: 'column',
+    minWidth: 450,
+    minHeight: 500,
+  },
+  cardHeader: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: '1rem',
+  },
+  cardContent: {
+    display: 'flex',
+    flexGrow: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'stretch',
+  },
+  desc: {
+    margin: '1.5rem',
+    fontWeight: 400,
+  },
+  button: {
+    margin: '1rem 0',
+    padding: '1.5rem',
+    fontSize: '1.5rem',
+  },
+  owned: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: '1rem',
+  },
+
+  fadeEnterLeft: {
+    opacity: 0,
+    transform: 'translateX(-100%)',
+    transition: 'opacity 500ms, transform 500ms',
+  },
+  fadeEnterRight: {
+    opacity: 0,
+    transform: 'translateX(100%)',
+    transition: 'opacity 500ms, transform 500ms',
+  },
+  fadeEnterActive: {
+    opacity: 1,
+    transform: 'translateX(0%)',
+  },
+
+  fadeExit: {
+    opacity: 1,
+    transform: 'translateX(0%)',
+  },
+  fadeExitActiveLeft: {
+    opacity: 0,
+    transform: 'translateX(100%)',
+    transition: 'opacity 500ms, transform 500ms',
+  },
+  fadeExitActiveRight: {
+    opacity: 0,
+    transform: 'translateX(-100%)',
+    transition: 'opacity 500ms, transform 500ms',
+  },
+});
+
 const HomePage: NextPage = () => {
   const { uid } = useAuth();
+  const styles = useStyles();
   const [choice, setChoice] = useState<'join' | 'create'>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [ownedList, setOwnedList] = useState([]);
@@ -49,6 +122,7 @@ const HomePage: NextPage = () => {
         })
         .then((key) => {
           if (key && key.data) {
+            setFormLoading(false);
             router.push(`/${key.data}`);
           }
         });
@@ -71,18 +145,106 @@ const HomePage: NextPage = () => {
     }
   }, [uid]);
 
+  let paperContent;
+  switch (choice) {
+    case 'join':
+      paperContent = (
+        <React.Fragment>
+          <CardHeader
+            action={
+              <IconButton onClick={() => setChoice(null)}>
+                <ArrowBackIcon />
+              </IconButton>
+            }
+            title={'Rejoindre une liste'}
+            className={styles.cardHeader}
+          />
+          <CardContent className={styles.cardContent}>
+            {ownedList && (
+              <React.Fragment>
+                <div className={styles.owned}>
+                  <Typography variant={'h4'}>Reprendre mes listes</Typography>
+                  {Object.entries(ownedList).map(([key, list]) => (
+                    <Link href={`/${key}`}>{list.name}</Link>
+                  ))}
+                </div>
+                <Divider
+                  // variant={'fullWidth'}
+                  orientation={'horizontal'}
+                  style={{ margin: '0 auto 1.5rem auto', width: '50%' }}
+                />
+              </React.Fragment>
+            )}
+            <JoinListForm onSubmit={handleJoinSubmit} />
+          </CardContent>
+        </React.Fragment>
+      );
+      break;
+
+    case 'create':
+      paperContent = (
+        <React.Fragment>
+          <CardHeader
+            action={
+              <IconButton onClick={() => setChoice(null)}>
+                <ArrowBackIcon />
+              </IconButton>
+            }
+            title={'Créer une liste'}
+            className={styles.cardHeader}
+          />
+          <CardContent className={styles.cardContent}>
+            <CreateListForm
+              onSubmit={handleCreateSubmit}
+              loading={formLoading}
+            />
+          </CardContent>
+        </React.Fragment>
+      );
+      break;
+
+    default:
+      paperContent = (
+        <React.Fragment>
+          <CardHeader
+            title={'De quelle humeur êtes-vous ?'}
+            className={styles.cardHeader}
+          />
+          <CardContent className={styles.cardContent}>
+            <Button
+              variant={'outlined'}
+              className={styles.button}
+              onClick={() => setChoice('create')}
+              fullWidth>
+              Créer une liste
+            </Button>
+            <Button
+              variant={'outlined'}
+              className={styles.button}
+              onClick={() => setChoice('join')}
+              fullWidth>
+              Rejoindre une liste
+            </Button>
+          </CardContent>
+        </React.Fragment>
+      );
+      break;
+  }
+
   return (
-    <Layout>
-      <h1 className={styles.title}>
+    <Layout disableHomepageButton>
+      <Typography variant={'h1'}>
         Bienvenue sur{' '}
-        <a href="https://fast-waiting-list.vercel.app">Fast Wait List</a>
-      </h1>
+        <MUILink href="https://fast-waiting-list.vercel.app">
+          Fast Waiting List
+        </MUILink>
+      </Typography>
 
-      <p className={styles.description}>
+      <Typography variant={'h3'} className={styles.desc}>
         Commencez par créer une liste d'attente ou rejoignez-en une
-      </p>
+      </Typography>
 
-      <div className={styles.card}>
+      <Card>
         <SwitchTransition mode="out-in">
           <CSSTransition
             key={choice}
@@ -98,70 +260,11 @@ const HomePage: NextPage = () => {
                 ? styles.fadeExitActiveRight
                 : styles.fadeExitActiveLeft,
             }}>
-            {choice ? (
-              choice === 'join' ? (
-                <div className={styles.cardContainer}>
-                  <div className={styles.cardHeader}>
-                    <h3>Rejoindre une liste</h3>
-                    <BackButton onClick={() => setChoice(null)} />
-                  </div>
-                  <div className={styles.cardContent}>
-                    {ownedList && (
-                      <div className={styles.ownedLists}>
-                        <h4>Reprendre mes listes</h4>
-                        {Object.entries(ownedList).map(([key, list]) => (
-                          <Link href={`/${key}`}>{list.name}</Link>
-                        ))}
-                      </div>
-                    )}
-                    <JoinListForm onSubmit={handleJoinSubmit} />
-                  </div>
-                </div>
-              ) : choice === 'create' ? (
-                <div className={styles.cardContainer}>
-                  <div className={styles.cardHeader}>
-                    <h3>Créer une liste</h3>
-                    <BackButton onClick={() => setChoice(null)} />
-                  </div>
-                  <div className={styles.cardContent}>
-                    <CreateListForm
-                      onSubmit={handleCreateSubmit}
-                      loading={formLoading}
-                    />
-                  </div>
-                </div>
-              ) : null
-            ) : (
-              <div className={styles.cardContainer}>
-                <div className={styles.cardHeader}>
-                  <h3>De quelle humeur êtes-vous ?</h3>
-                </div>
-                <div className={styles.cardContent}>
-                  <Button fullWidth onClick={() => setChoice('create')}>
-                    Créer une liste
-                  </Button>
-                  <div className={styles.divider} />
-                  <Button fullWidth onClick={() => setChoice('join')}>
-                    Rejoindre une liste
-                  </Button>
-                </div>
-              </div>
-            )}
+            <div className={styles.card}>{paperContent}</div>
           </CSSTransition>
         </SwitchTransition>
-      </div>
+      </Card>
     </Layout>
-  );
-};
-
-const BackButton: React.FC<ButtonHTMLAttributes<HTMLButtonElement>> = ({
-  children,
-  ...props
-}) => {
-  return (
-    <button {...props} className={styles.backButton}>
-      <BackIcon />
-    </button>
   );
 };
 

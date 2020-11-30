@@ -1,15 +1,44 @@
-import styles from './Footer.module.css';
 import React, { useCallback, useEffect, useState } from 'react';
-import { MdPerson } from 'react-icons/md';
+import { Person as PersonIcon } from '@material-ui/icons';
 import { useAuth } from '@hooks/useAuth';
 import copy from 'copy-to-clipboard';
-import Tooltip from '@components/Tooltip/Tooltip';
-import { useNotifications } from '@hooks/useNotifications';
+import {
+  Button,
+  IconButton,
+  makeStyles,
+  Tooltip,
+  Link as MuiLink,
+  Theme,
+} from '@material-ui/core';
+import { useSnackbar } from 'notistack';
+
+const useStyles = makeStyles((theme: Theme) => ({
+  root: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
+    borderTop: '1px solid #eaeaea',
+  },
+  credit: {
+    flexGrow: 1,
+    textAlign: 'center',
+  },
+  theme: {
+    background: 'none',
+    '&:hover': {
+      color: theme.palette.primary.main,
+      background: 'none',
+    },
+  },
+}));
 
 const Footer: React.FC = () => {
+  const styles = useStyles();
+  const { enqueueSnackbar } = useSnackbar();
   const [theme, setTheme] = useState<'light' | 'dark'>(null);
   const { uid } = useAuth();
-  const { notify } = useNotifications();
 
   useEffect(() => {
     let theme = localStorage.getItem('theme');
@@ -75,30 +104,28 @@ const Footer: React.FC = () => {
   }, []);
 
   const copyUID = useCallback(() => {
-    notify({ text: 'Votre identifiant a été copié !' });
+    enqueueSnackbar('Votre identifiant a été copié !');
     copy(uid);
-  }, [notify, uid]);
+  }, [enqueueSnackbar, uid]);
 
   return (
-    <footer className={styles.footer}>
-      <Tooltip
-        text={`Votre identifiant est: ${uid}`}
-        direction={{ vertical: 'top', horizontal: 'left' }}>
-        <button onClick={copyUID} className={styles.uid}>
-          <MdPerson />
-        </button>
+    <footer className={styles.root}>
+      <Tooltip title={`Votre identifiant est: ${uid}`}>
+        <IconButton onClick={copyUID}>
+          <PersonIcon />
+        </IconButton>
       </Tooltip>
       <div className={styles.credit}>
-        <a
+        <MuiLink
           href="https://github.com/0ctanium"
           target="_blank"
           rel="noopener noreferrer">
           Créé par <span style={{ color: '#0070f3' }}>Octanium</span>
-        </a>
+        </MuiLink>
       </div>
-      <button onClick={handleTheme}>
+      <Button onClick={handleTheme} variant={'text'} className={styles.theme}>
         {theme === 'dark' ? 'Theme clair' : 'Theme sombre'}
-      </button>
+      </Button>
     </footer>
   );
 };

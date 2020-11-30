@@ -1,7 +1,6 @@
-import Input from '@components/Form/Input/Input';
 import React, { useCallback, useState } from 'react';
-import Button from '@components/Button/Button';
 import LoadingSpinner from '@icons/Loading';
+import { Button, makeStyles, TextField } from '@material-ui/core';
 
 export type CreateListFormProps = {
   onSubmit?: (values: CreateListFormValues) => void;
@@ -13,11 +12,28 @@ export type CreateListFormValues = {
   desc: string;
 };
 
+const useStyles = makeStyles({
+  input: {
+    marginBottom: '1.5rem',
+  },
+  submit: {
+    fontSize: '1rem',
+  },
+});
+
+const validate = {
+  name(val) {
+    if (!val) return 'Veuillez entrer un nom';
+  },
+};
+
 const CreateListForm: React.FC<CreateListFormProps> = (props) => {
+  const styles = useStyles();
   const [state, setState] = useState<CreateListFormValues>({
     name: '',
     desc: '',
   });
+  const [error, setError] = useState<Record<string, string>>({});
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -26,34 +42,48 @@ const CreateListForm: React.FC<CreateListFormProps> = (props) => {
       ...prevState,
       [name]: value,
     }));
+
+    setError((prevState) => ({
+      ...prevState,
+      [name]: (validate[name] && validate[name](value)) || null,
+    }));
   }, []);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-
-      props.onSubmit(state);
+      if (
+        Object.entries(validate).every(
+          ([key, validator]) => !validator(state[key])
+        ) &&
+        !props.loading
+      ) {
+        props.onSubmit(state);
+      }
     },
     [props, state]
   );
 
   return (
-    <form onSubmit={handleSubmit}>
-      <Input
-        label={'Nom'}
+    <form onSubmit={handleSubmit} noValidate>
+      <TextField
+        variant={'outlined'}
+        label={'Titre'}
         id={'name'}
         name={'name'}
         type={'text'}
-        placeholder={'Entrez le nome de la liste'}
+        placeholder={'Entrez le titre de la liste'}
         onChange={handleChange}
         value={state.name}
+        error={!!error.name}
+        helperText={error.name || ''}
         required
         autoComplete={'off'}
         fullWidth
-        color={'#eaeaea'}
-        style={{ marginBottom: '1.5rem' }}
+        className={styles.input}
       />
-      <Input
+      <TextField
+        variant={'outlined'}
         label={'Description'}
         id={'desc'}
         name={'desc'}
@@ -63,9 +93,9 @@ const CreateListForm: React.FC<CreateListFormProps> = (props) => {
         value={state.desc}
         autoComplete={'off'}
         fullWidth
-        color={'#eaeaea'}
+        className={styles.input}
       />
-      <Button type={'submit'}>
+      <Button type={'submit'} variant={'outlined'} className={styles.submit}>
         {props.loading ? <LoadingSpinner /> : 'Créer'}
       </Button>
     </form>

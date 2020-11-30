@@ -14,21 +14,35 @@ import React, {
 } from 'react';
 import { initializeFirebase } from '@services/firebase/client';
 import firebase from 'firebase';
-import { AppError } from '@errors/AppError';
 
-import styles from '@styles/List.module.css';
-import Input from '@components/Form/Input/Input';
 import { useAuth } from '@hooks/useAuth';
 import { DragDropContext, Draggable, Droppable } from 'react-beautiful-dnd';
 import {
-  MdClose,
-  MdExitToApp,
-  MdDragHandle,
-  MdPersonAdd,
-} from 'react-icons/md';
-import Tooltip from '@components/Tooltip/Tooltip';
+  Close as CloseIcon,
+  ExitToApp as ExitToAppIcon,
+  DragHandle as DragHandleIcon,
+  PersonAdd as PersonAddIcon,
+} from '@material-ui/icons';
 import LoadingSpinner from '@icons/Loading';
 import copy from 'copy-to-clipboard';
+import Head from 'next/head';
+import {
+  Button,
+  Divider,
+  IconButton,
+  List,
+  ListItem,
+  ListItemIcon,
+  makeStyles,
+  TextField,
+  Tooltip,
+  Typography,
+  Checkbox,
+  ListItemText,
+  Card,
+  ListItemSecondaryAction,
+} from '@material-ui/core';
+import { useSnackbar } from 'notistack';
 initializeFirebase();
 
 type Waiter = {
@@ -39,32 +53,67 @@ type Waiter = {
   uid: string;
 };
 
+const useStyles = makeStyles({
+  title: {
+    position: 'relative',
+    textAlign: 'center',
+  },
+  desc: {
+    margin: '1.5rem',
+    fontWeight: 400,
+  },
+  invite: {
+    position: 'absolute',
+    top: '50%',
+    right: 0,
+    transform: 'translate(100%, -50%)',
+  },
+  form: {
+    display: 'flex',
+    marginBottom: '1rem',
+  },
+  input: {
+    flexGrow: 1,
+    marginRight: 12,
+  },
+  submit: {
+    fontSize: '1rem',
+    minWidth: 0,
+  },
+  infos: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  card: {
+    marginTop: '1.5rem',
+    width: 450,
+  },
+  list: {
+    transition: 'background-color 120ms',
+  },
+  drag: {
+    marginRight: 12,
+    cursor: 'grab',
+  },
+  check: {
+    padding: 0,
+    marginRight: 12,
+  },
+});
+
 const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
   props
 ) => {
+  const styles = useStyles();
   const { uid } = useAuth();
+  const { enqueueSnackbar } = useSnackbar();
   const [name, setName] = useState('');
-  const [dataMap, setDataMap] = useState(null);
-  const [dataState, setDataState] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [isLoading, setLoading] = useState(true);
+  const [data, setData] = useState<Waiter[]>(null);
 
-  const data = useMemo<Waiter[]>(
-    () =>
-      dataMap && dataState
-        ? Object.keys(dataMap).reduce((acc, key) => {
-            if (typeof dataState[key]?.index === 'number') {
-              acc[dataState[key].index] = {
-                ...dataState[key],
-                ...dataMap[key],
-                uid: key,
-              };
-            }
-
-            return acc;
-          }, [])
-        : null,
-    [dataMap, dataState]
-  );
   const current = useMemo(
     () => data && data.find((item) => item && item.uid === uid),
     [data, uid]
@@ -227,7 +276,7 @@ const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
       const [removed] = items.splice(result.source.index, 1);
       items.splice(result.destination.index, 0, removed);
 
-      const newItems: Waiter[] = items.filter(Boolean);
+      const newItems: Waiter[] = items.filter(Boolean) as Waiter[];
 
       const newData = newItems.reduce(
         (acc, { uid, name, ...curr }, i) => ({
@@ -258,298 +307,272 @@ const ListPage: NextPage<InferGetStaticPropsType<typeof getStaticProps>> = (
       .child('lists')
       .child(props.list.id);
 
-    const dataRef = listRef.child('data');
-    const stateRef = listRef.child('dataState');
-
-    // TODO: User blacklist
-    // listRef
-    //   .child('blacklist')
-    //   .child(uid)
-    //   .on('value', (snapshot) => {
-    //     setBan((snapshot.exists() && snapshot.val()) || false);
-    //   });
-
-    dataRef.on('child_added', (snapshot) => {
-      setDataMap((prevState) => ({
-        ...prevState,
-        [snapshot.key]: snapshot.val(),
-      }));
-    });
-
-    dataRef.on('child_changed', (snapshot) => {
-      setDataMap(({ ...prevState }) => ({
-        ...prevState,
-        [snapshot.key]: snapshot.val(),
-      }));
-    });
-
-    dataRef.on('child_removed', (snapshot) => {
-      setDataMap(({ ...prevState }) => {
-        delete prevState[snapshot.key];
-
-        return prevState;
-      });
-    });
-
-    dataRef.once('value').then((snapshot) => {
+    listRef.on('value', (snapshot) => {
       if (snapshot.exists()) {
-        setDataMap(
-          Object.entries(snapshot.val()).reduce(
-            (acc, [key, val]) => ({
-              ...acc,
-              [key]: val,
-            }),
-            {}
-          )
-        );
-      }
-    });
+        const val = snapshot.val();
 
-    stateRef.on('child_added', (snapshot) => {
-      setDataState((prevState) => ({
-        ...prevState,
-        [snapshot.key]: snapshot.val(),
-      }));
-    });
+        if (val.data && val.dataState) {
+          setData(
+            Object.keys(val.data).reduce((acc, key) => {
+              if (typeof val.dataState[key]?.index === 'number') {
+                acc[val.dataState[key].index] = {
+                  ...val.dataState[key],
+                  ...val.data[key],
+                  uid: key,
+                };
+              }
 
-    stateRef.on('child_changed', (snapshot) => {
-      setDataState(({ ...prevState }) => ({
-        ...prevState,
-        [snapshot.key]: snapshot.val(),
-      }));
-    });
-
-    stateRef.on('child_removed', (snapshot) => {
-      setDataState(({ ...prevState }) => {
-        delete prevState[snapshot.key];
-
-        return prevState;
-      });
-    });
-
-    stateRef.once('value').then((snapshot) => {
-      if (snapshot.exists()) {
-        setDataState(
-          Object.entries(snapshot.val()).reduce(
-            (acc, [key, val]) => ({
-              ...acc,
-              [key]: val,
-            }),
-            {}
-          )
-        );
+              return acc;
+            }, [])
+          );
+        } else {
+          setData([]);
+        }
       }
     });
 
     return function cleanup() {
-      dataRef.off();
-      stateRef.off();
       listRef.off();
     };
   }, [props.list.id, uid]);
 
+  useEffect(() => {
+    setLoading(data === null);
+  }, [data]);
+
   return (
     <Layout>
+      <Head>
+        <title>{props.list.name} - Fast Wait list</title>
+      </Head>
+
       <div className={styles.title}>
-        <h1>{props.list.name}</h1>
-        <div className={styles.invite}>
-          <Tooltip text={'Inviter des personnes'}>
-            <button
-              onClick={() => {
-                copy(props.list.id);
-              }}>
-              <MdPersonAdd />
-            </button>
-          </Tooltip>
-        </div>
+        <Typography variant={'h1'}>{props.list.name}</Typography>
+        {props.list.owner === uid && (
+          <div className={styles.invite}>
+            <Tooltip title={'Inviter des personnes'}>
+              <IconButton
+                onClick={() => {
+                  enqueueSnackbar(`Le lien d'accès la liste a été copié !`);
+                  copy(process.env.NEXT_PUBLIC_HOSTNAME + props.list.id);
+                }}>
+                <PersonAddIcon />
+              </IconButton>
+            </Tooltip>
+          </div>
+        )}
       </div>
 
-      <p className={styles.description}>{props.list.desc}</p>
+      <Typography variant={'h3'} className={styles.desc}>
+        {props.list.desc}
+      </Typography>
 
-      {!current && props.list.owner !== uid ? (
-        <form className={styles.joinForm}>
-          <Input
-            label={'Votre nom'}
-            name={'name'}
-            id={'name'}
-            type={'text'}
-            value={name}
-            onChange={handleChange}
-            color={'#fff'}
-            className={styles.joinInput}
-            required
-          />
-          <button onClick={handleJoinWaiters} className={styles.button}>
-            {formLoading ? <LoadingSpinner /> : "Rejoindre la liste d'attente"}
-          </button>
-        </form>
+      {isLoading ? (
+        <div>
+          <LoadingSpinner />
+        </div>
       ) : (
-        current && (
-          <h4>
-            {current.checked
-              ? 'Tu as réussi à passer, Bravo !'
-              : beforePeople === 0
-              ? `Tu y es presque, tu es le prochain sur la liste !`
-              : `Attend encore un peu, il reste ${beforePeople} personne${
-                  beforePeople > 1 ? 's' : ''
-                } devant toi !`}
-          </h4>
-        )
-      )}
-
-      {props.list.owner === uid && (
-        <div className={styles.info}>
-          {data &&
-            data.length > 0 &&
-            (uncheckedPeople.length > 0 ? (
-              <>
-                <div className={styles.actions}>
-                  <Tooltip text={'Passer à la personne suivant'}>
-                    <button className={styles.button} onClick={handleNext}>
-                      Au suivant !
-                    </button>
-                  </Tooltip>
-                </div>
-                <div className={styles.stats}>
-                  <h4>Personne suivante: {uncheckedPeople[0].name} </h4>
-                </div>
-              </>
-            ) : (
-              <h3>Bravo, tu as terminé la liste !</h3>
-            ))}
-        </div>
-      )}
-
-      {!data || data.length === 0 ? (
-        <h3>Il n'y a personne pour le moment..</h3>
-      ) : null}
-
-      <div>
-        {data &&
-          (props.list.owner === uid ? (
-            <DragDropContext onDragEnd={onDragEnd}>
-              <Droppable droppableId="droppable">
-                {(provided, snapshot) => (
-                  <div
-                    className={styles.list}
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                    style={{
-                      background: snapshot.isDraggingOver
-                        ? 'lightblue'
-                        : '#eaeaea',
-                    }}>
-                    {Object.entries(data).map(
-                      ([key, waiter]) =>
-                        waiter.name &&
-                        typeof waiter.index === 'number' && (
-                          <Draggable
-                            key={key}
-                            draggableId={key}
-                            index={waiter.index}>
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                key={key}
-                                className={styles.listItem}
-                                style={{
-                                  ...provided.draggableProps.style,
-                                  background: snapshot.isDragging
-                                    ? 'lightgreen'
-                                    : 'grey',
-                                }}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}>
-                                <span
-                                  style={{ marginRight: 12, cursor: 'grab' }}>
-                                  <MdDragHandle />
-                                </span>
-                                <input
-                                  className={styles.listItemCheck}
-                                  type={'checkbox'}
-                                  name={'checked'}
-                                  value={''}
-                                  checked={waiter.checked}
-                                  onChange={handleCheckWaiter(waiter.uid)}
-                                />
-                                <span
-                                  className={styles.listItemTitle}
-                                  style={{
-                                    textDecoration:
-                                      waiter.checked && 'line-through',
-                                  }}>
-                                  {waiter.name}
-                                </span>
-                                <div className={styles.listItemActions}>
-                                  {waiter.uid === uid && (
-                                    <Tooltip
-                                      text={"Quitter la liste d'attente"}>
-                                      <button onClick={handleLeaveWaiter()}>
-                                        <MdExitToApp />
-                                      </button>
-                                    </Tooltip>
-                                  )}
-
-                                  <Tooltip text={'Retirer de la liste'}>
-                                    <button
-                                      onClick={handleLeaveWaiter(waiter.uid)}>
-                                      <MdClose />
-                                    </button>
-                                  </Tooltip>
-
-                                  {/* TODO: Ban management /*/}
-                                  {/*<button onClick={handleBanWaiter(key)}>*/}
-                                  {/*  <MdBlock />*/}
-                                  {/*</button>*/}
-                                </div>
-                              </div>
-                            )}
-                          </Draggable>
-                        )
-                    )}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </DragDropContext>
-          ) : (
-            <div className={styles.list}>
-              {Object.entries(data).map(
-                ([key, waiter]) =>
-                  waiter.name &&
-                  typeof waiter.index === 'number' && (
-                    <div key={key} className={styles.listItem}>
-                      <span
-                        className={styles.listItemTitle}
-                        style={{
-                          textDecoration: waiter.checked && 'line-through',
-                        }}>
-                        {waiter.name}
-                      </span>
-                      <div className={styles.listItemActions}>
-                        {waiter.uid === uid && (
-                          <Tooltip text={"Quitter la liste d'attente"}>
-                            <button onClick={handleLeaveWaiter()}>
-                              <MdExitToApp />
-                            </button>
-                          </Tooltip>
-                        )}
-                      </div>
-                    </div>
-                  )
-              )}
+        <React.Fragment>
+          {props.list.owner === uid ? (
+            <div className={styles.infos}>
+              {data &&
+                data.length > 0 &&
+                (uncheckedPeople.length > 0 ? (
+                  <React.Fragment>
+                    <Tooltip title={'Passer à la personne suivant'}>
+                      <Button variant={'outlined'} onClick={handleNext}>
+                        Au suivant !
+                      </Button>
+                    </Tooltip>
+                    <Divider
+                      orientation={'vertical'}
+                      flexItem
+                      style={{ margin: '0 1rem' }}
+                    />
+                    <Typography variant={'h4'}>
+                      Personne suivante: {uncheckedPeople[0].name}{' '}
+                    </Typography>
+                  </React.Fragment>
+                ) : (
+                  <Typography variant={'h4'}>
+                    Bravo, la liste est terminée !
+                  </Typography>
+                ))}
             </div>
-          ))}
-      </div>
+          ) : !current ? (
+            <form className={styles.form}>
+              <TextField
+                label={'Votre nom'}
+                name={'name'}
+                id={'name'}
+                type={'text'}
+                value={name}
+                onChange={handleChange}
+                className={styles.input}
+                variant={'outlined'}
+                required
+              />
+              <Button
+                onClick={handleJoinWaiters}
+                variant={'outlined'}
+                className={styles.submit}>
+                {formLoading ? (
+                  <LoadingSpinner />
+                ) : (
+                  "Rejoindre la liste d'attente"
+                )}
+              </Button>
+            </form>
+          ) : (
+            <Typography variant={'h5'} style={{ fontWeight: 600 }}>
+              {current.checked
+                ? 'Tu as réussi à passer, Bravo !'
+                : beforePeople === 0
+                ? `Tu y es presque, tu es le prochain sur la liste !`
+                : `Attend encore un peu, il reste ${beforePeople} personne${
+                    beforePeople > 1 ? 's' : ''
+                  } devant toi !`}
+            </Typography>
+          )}
+
+          {!data || data.length === 0 ? (
+            <Typography variant={'h3'}>
+              Il n'y a personne pour le moment..
+            </Typography>
+          ) : (
+            <Card className={styles.card}>
+              {props.list.owner === uid ? (
+                <DragDropContext onDragEnd={onDragEnd}>
+                  <Droppable droppableId="droppable">
+                    {(provided, snapshot) => (
+                      <List
+                        className={styles.list}
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        style={{
+                          background: snapshot.isDraggingOver && 'lightblue',
+                        }}>
+                        {Object.entries(data).map(
+                          ([key, waiter]) =>
+                            waiter.name &&
+                            typeof waiter.index === 'number' && (
+                              <Draggable
+                                key={key}
+                                draggableId={key}
+                                index={waiter.index}>
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    key={key}
+                                    style={{
+                                      ...provided.draggableProps.style,
+                                      background: snapshot.isDragging
+                                        ? 'lightgreen'
+                                        : 'grey',
+                                    }}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}>
+                                    <ListItem>
+                                      <ListItemIcon>
+                                        <DragHandleIcon
+                                          className={styles.drag}
+                                        />
+                                        <Checkbox
+                                          className={styles.check}
+                                          name={'checked'}
+                                          value={''}
+                                          checked={!!waiter.checked}
+                                          onChange={handleCheckWaiter(
+                                            waiter.uid
+                                          )}
+                                          color={'primary'}
+                                        />
+                                      </ListItemIcon>
+                                      <ListItemText
+                                        primary={waiter.name}
+                                        style={{
+                                          textDecoration:
+                                            !!waiter.checked && 'line-through',
+                                        }}
+                                      />
+                                      <ListItemSecondaryAction>
+                                        {waiter.uid === uid && (
+                                          <Tooltip
+                                            title={
+                                              "Quitter la liste d'attente"
+                                            }>
+                                            <IconButton
+                                              onClick={handleLeaveWaiter()}>
+                                              <ExitToAppIcon />
+                                            </IconButton>
+                                          </Tooltip>
+                                        )}
+
+                                        <Tooltip title={'Retirer de la liste'}>
+                                          <IconButton
+                                            onClick={handleLeaveWaiter(
+                                              waiter.uid
+                                            )}>
+                                            <CloseIcon />
+                                          </IconButton>
+                                        </Tooltip>
+
+                                        {/* TODO: Ban management /*/}
+                                        {/*<button onClick={handleBanWaiter(key)}>*/}
+                                        {/*  <MdBlock />*/}
+                                        {/*</button>*/}
+                                      </ListItemSecondaryAction>
+                                    </ListItem>
+                                  </div>
+                                )}
+                              </Draggable>
+                            )
+                        )}
+                        {provided.placeholder}
+                      </List>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+              ) : (
+                <List className={styles.list}>
+                  {Object.entries(data).map(
+                    ([key, waiter]) =>
+                      waiter.name &&
+                      typeof waiter.index === 'number' && (
+                        <ListItem key={key}>
+                          <ListItemText
+                            style={{
+                              textDecoration: waiter.checked && 'line-through',
+                            }}>
+                            {waiter.name}
+                          </ListItemText>
+                          <ListItemSecondaryAction>
+                            {waiter.uid === uid && (
+                              <Tooltip title={"Quitter la liste d'attente"}>
+                                <IconButton onClick={handleLeaveWaiter()}>
+                                  <ExitToAppIcon />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                          </ListItemSecondaryAction>
+                        </ListItem>
+                      )
+                  )}
+                </List>
+              )}
+            </Card>
+          )}
+        </React.Fragment>
+      )}
     </Layout>
   );
 };
 
 export type ListPageProps = {
-  list: List;
+  list: ListProps;
 };
 
-export type List = {
+export type ListProps = {
   id: string;
   name: string;
   desc: string;
@@ -561,15 +584,25 @@ export const getStaticProps: GetStaticProps<ListPageProps> = async (
 ) => {
   const listID = context.params.code as string;
 
+  if (!/^[a-zA-Z0-9]{5,7}$/.test(listID)) {
+    return {
+      notFound: true,
+    };
+  }
+
   const snap = await firebase
     .database()
     .ref('lists')
     .child(listID)
     .once('value');
 
-  if (!snap.exists()) throw new AppError(404, `La liste n'existe pas`);
+  if (!snap.exists()) {
+    return {
+      notFound: true,
+    };
+  }
 
-  const { owner, name, desc } = snap.val() as List;
+  const { owner, name, desc } = snap.val() as ListProps;
 
   return {
     props: {
